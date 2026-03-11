@@ -34,6 +34,7 @@ async function dxz(query, options = {}) {
         // --- මෙන්න ඔයා ඉල්ලපු දත්ත ටික සෙට් කරන තැන ---
         const result = {
           success: true,
+          creator: "@Darknaviya", // 🔥 මෙතනට ඔයාගේ නම එකතු කළා
           title: data.title,
           region: data.region,
           duration: data.duration,
