@@ -1,13 +1,10 @@
 const express = require("express");
 const axios = require("axios");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// JSON සහ URL-encoded data support කරන්න
 app.use(express.json());
 
-// ඔයාගේ සුපිරි dxz function එක
 async function dxz(query, options = {}) {
   const { maxRetries = 2, timeout = 15000 } = options;
   return new Promise(async (resolve, reject) => {
@@ -23,47 +20,65 @@ async function dxz(query, options = {}) {
           timeout,
           headers: {
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            Cookie: "current_language=en",
             "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36",
           },
           data: encodedParams.toString(),
         });
+
         if (!response.data || response.data.code !== 0) {
-          throw new Error(response.data?.msg || "API returned non-zero code");
+          throw new Error(response.data?.msg || "API returned error");
         }
+
         const data = response.data.data;
+
+        // --- මෙන්න ඔයා ඉල්ලපු දත්ත ටික සෙට් කරන තැන ---
         const result = {
           success: true,
-          title: data.title || null,
-          author: {
-            username: data.author?.unique_id || data.author?.nickname,
-            nickname: data.author?.nickname,
+          title: data.title,
+          region: data.region,
+          duration: data.duration,
+          // වීඩියෝ ලින්ක්ස්
+          links: {
+            no_watermark: data.play,
+            watermark: data.wmplay,
+            hd_video: data.hdplay,
+            music: data.music
           },
-          cover: data.cover,
-          duration: data.duration || null,
-          no_watermark: data.play, 
-          watermark: data.wmplay || data.wm_size,
-          music: data.music,
+          // යූසර්ගේ විස්තර (Profile Photo ඇතුළුව)
+          author: {
+            id: data.author?.id,
+            username: data.author?.unique_id,
+            nickname: data.author?.nickname,
+            avatar: data.author?.avatar // 📸 Profile Photo එක මෙතන
+          },
+          // වීඩියෝ එකේ Stats
+          stats: {
+            plays: data.play_count,
+            likes: data.digg_count,
+            comments: data.comment_count,
+            shares: data.share_count,
+            downloads: data.download_count
+          },
+          covers: {
+            static: data.cover,
+            dynamic: data.ai_dynamic_cover
+          }
         };
+
         resolve(result);
         return;
       } catch (error) {
         attempts++;
-        console.warn(`Attempt ${attempts} failed: ${error.message}`);
         if (attempts > maxRetries) reject(error);
-        await new Promise(r => setTimeout(r, 1500 * attempts)); 
+        await new Promise(r => setTimeout(r, 1500 * attempts));
       }
     }
   });
 }
 
-// API Endpoint එක (GET Request)
 app.get("/api/tiktok", async (req, res) => {
   const videoUrl = req.query.url;
-  
-  if (!videoUrl) {
-    return res.status(400).json({ success: false, message: "URL එකක් දෙන්න (උදා: ?url=...)" });
-  }
+  if (!videoUrl) return res.status(400).json({ success: false, message: "URL required" });
 
   try {
     const data = await dxz(videoUrl);
@@ -73,7 +88,4 @@ app.get("/api/tiktok", async (req, res) => {
   }
 });
 
-// Server එක Start කිරීම
-app.listen(PORT, () => {
-  console.log(`🚀 TikTok API is running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`API on port ${PORT}`));
